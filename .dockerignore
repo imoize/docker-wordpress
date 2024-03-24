@@ -1,0 +1,12 @@
+.git
+.gitignore
+.github
+.gitattributes
+.dockerignore
+.DS_Store
+.vscode
+LICENSE
+LICENSE.md
+READMETEMPLATE.md
+README.md
+example
