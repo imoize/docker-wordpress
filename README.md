@@ -70,13 +70,14 @@ docker run -d \
 | ------------------------- | ------------------------------------------------------ | ------------- |
 | PUID                      | User UID                                               |               |
 | PGID                      | Group GID                                              |               |
-| TZ                        | Specify a timezone see this [list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).       | UTC          | 
+| TZ                        | Specify a timezone see this [list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).       | UTC          |
+| S6_VERBOSITY              | Controls the verbosity of s6-rc. See [this.](https://github.com/just-containers/s6-overlay?tab=readme-ov-file#customizing-s6-overlay-behaviour)    | 1             |
 | BYPASS_DB_CHECK           | Bypass Database check before service start.            | no            |
-| WORDPRESS_DB_HOST         | Define database hostname.                              |               |
-| WORDPRESS_DB_NAME         | Define database name.                                  |               |
-| WORDPRESS_DB_USER         | Define database user.                                  |               |
-| WORDPRESS_DB_PASSWORD     | Define database password.                              |               |
-| WORDPRESS_TABLE_PREFIX    | Define table prefix, you can change it.                | wpx_          |
+| WORDPRESS_DB_HOST         | Define database hostname. Can use the docker secret.               |               |
+| WORDPRESS_DB_NAME         | Define database name. Can use the docker secret.                   |               |
+| WORDPRESS_DB_USER         | Define database user. Can use the docker secret.                   |               |
+| WORDPRESS_DB_PASSWORD     | Define database password. Can use the docker secret.               |               |
+| WORDPRESS_TABLE_PREFIX    | Define table prefix, you can change it. Can use the docker secret. | wpx_          |
 | MEMORY_LIMIT              | Set PHP Memory Limit.                                  | 256M          |
 | MAX_INPUT_TIME            | Set PHP Maximum Input Time.                            | 600           |
 | MAX_INPUT_VARS            | Set PHP Maximum Input Vars.                            | 5000          |
@@ -120,6 +121,26 @@ wordpress:
   -e WORDPRESS_DB_PASSWORD=wordpress \
   -e BYPASS_DB_CHECK=yes \
   imoize/wordpress:latest
+```
+
+### Docker Secrets Support
+
+You can append __FILE (double underscore) to WORDPRESS_DB_* env.
+
+```yaml
+services:
+  wordpress:
+      ...
+      environment:
+        - PUID=1001
+        - WORDPRESS_DB_PASSWORD__FILE="/run/secrets/wordpress_password"
+      secrets:
+        - wordpress_password
+
+secrets:
+  wordpress_password:
+    external: true
+      ...
 ```
 
 ## Volume
