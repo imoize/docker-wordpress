@@ -73,11 +73,11 @@ docker run -d \
 | TZ                        | Specify a timezone see this [list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List).       | UTC          |
 | S6_VERBOSITY              | Controls the verbosity of s6-rc. See [this.](https://github.com/just-containers/s6-overlay?tab=readme-ov-file#customizing-s6-overlay-behaviour)    | 1             |
 | BYPASS_DB_CHECK           | Bypass Database check before service start.            | no            |
-| WORDPRESS_DB_HOST         | Define database hostname. Can use the docker secret.               |               |
-| WORDPRESS_DB_NAME         | Define database name. Can use the docker secret.                   |               |
-| WORDPRESS_DB_USER         | Define database user. Can use the docker secret.                   |               |
-| WORDPRESS_DB_PASSWORD     | Define database password. Can use the docker secret.               |               |
-| WORDPRESS_TABLE_PREFIX    | Define table prefix, you can change it. Can use the docker secret. | wpx_          |
+| WORDPRESS_DB_HOST         | Define database hostname. Can use docker secret.               |               |
+| WORDPRESS_DB_NAME         | Define database name. Can use docker secret.                   |               |
+| WORDPRESS_DB_USER         | Define database user. Can use docker secret.                   |               |
+| WORDPRESS_DB_PASSWORD     | Define database password. Can use docker secret.               |               |
+| WORDPRESS_TABLE_PREFIX    | Define table prefix, you can change it. Can use docker secret. | wpx_          |
 | MEMORY_LIMIT              | Set PHP Memory Limit.                                  | 256M          |
 | MAX_INPUT_TIME            | Set PHP Maximum Input Time.                            | 600           |
 | MAX_INPUT_VARS            | Set PHP Maximum Input Vars.                            | 5000          |
