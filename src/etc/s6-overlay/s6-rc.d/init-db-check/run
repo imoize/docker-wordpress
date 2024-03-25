@@ -1,0 +1,33 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+
+# Load Generic Libraries
+. /defaults/scripts/env.sh
+. /defaults/scripts/liblog.sh
+
+# Maximum time to wait for a MySQL connection (in seconds)
+MAX_WAIT_TIME=60
+
+# Check if the BYPASS_DB_CHECK environment variable is set
+echo "$info ==> -- Starting database connection check --"
+case "$BYPASS_DB_CHECK" in
+    "yes")
+        echo "$warn ==> Bypassing the database check as BYPASS_DB_CHECK is set to 'yes'."
+    ;;
+    "no")
+        # Try to connect to MySQL and check the exit status with a timeout
+        echo "$info ==> Wait database connection..."
+        timeout $MAX_WAIT_TIME mysql -h $WORDPRESS_DB_HOST -u $WORDPRESS_DB_USER -p$WORDPRESS_DB_PASSWORD -e "SELECT 1;" > /dev/null 2>&1
+
+        if [ $? -eq 0 ]; then
+            echo "$info ==> Database connection established."
+        else
+            echo "$warn ==> Database connection failed or timed out."
+            exit 1
+        fi
+    ;;
+    *)
+        echo "$warn ==> Error: Invalid value for BYPASS_DB_CHECK: $BYPASS_DB_CHECK. Please set it to 'yes' or 'no'."
+        exit 1
+    ;;
+esac

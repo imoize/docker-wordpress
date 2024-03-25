@@ -1,0 +1,104 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+
+# Load Generic Libraries
+. /defaults/scripts/env.sh
+. /defaults/scripts/liblog.sh
+. /defaults/scripts/libwordpress.sh
+
+# create folders for wordpress
+mkdir -p \
+	"${WORDPRESS_DIR}" \
+	/config/crontabs
+
+echo "$info ==> -- Starting Wordpress setup --"
+# check if WordPress is already installed
+if [ ! -e "${WORDPRESS_DIR}/index.php" ]; then
+    echo "$info ==> Installing WordPress..."
+    
+    # Check if the archive file exists
+    if [ -e "/app/wordpress.tar.gz" ]; then
+        # Extract WordPress archive into the installation directory
+        tar -xzpf /app/wordpress.tar.gz -C "${WORDPRESS_DIR}" --strip-components=1
+    else
+        echo "$warn ==> Error: WordPress archive not found in /app/wordpress.tar.gz"
+        exit 1
+    fi
+
+	sleep 5
+    echo "$info ==> Wordpress installation completed."
+else
+    echo "$info ==> Wordpress is already installed in ${WORDPRESS_DIR}"
+fi
+
+# set .htaccess
+if [ ! -e "${WORDPRESS_DIR}/.htaccess" ]; then
+	{
+		echo '# BEGIN WordPress'
+		echo ''
+		echo 'RewriteEngine On'
+		echo 'RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]'
+		echo 'RewriteBase /'
+		echo 'RewriteRule ^index\.php$ - [L]'
+		echo 'RewriteCond %{REQUEST_FILENAME} !-f'
+		echo 'RewriteCond %{REQUEST_FILENAME} !-d'
+		echo 'RewriteRule . /index.php [L]'
+		echo ''
+		echo '# END WordPress'
+	} >${WORDPRESS_DIR}/.htaccess
+fi
+
+# configure wp-config.php
+if [[ ! -f "${WORDPRESS_DIR}/wp-config.php" ]]; then
+	mv ${WORDPRESS_DIR}/wp-config-sample.php ${WORDPRESS_DIR}/wp-config.php
+fi
+
+# check if the database config exist in wp-config.php
+if [[ -n "$(grep database_name_here "${WORDPRESS_DIR}/wp-config.php" || true)" ]]; then
+    echo "$info ==> Setup wp-config.php"
+    # set database configuration
+    wordpress_conf_set 'DB_NAME' "$WORDPRESS_DB_NAME"
+    wordpress_conf_set 'DB_USER' "$WORDPRESS_DB_USER"
+    wordpress_conf_set 'DB_PASSWORD' "$WORDPRESS_DB_PASSWORD"
+    wordpress_conf_set 'DB_HOST' "$WORDPRESS_DB_HOST"
+
+    # generate and insert security salts
+    SALT="$(curl -s https://api.wordpress.org/secret-key/1.1/salt/)"
+    printf '%s\n' "g/put your unique phrase here/d" a "$SALT" . w | ed -s "${WORDPRESS_DIR}/wp-config.php"
+
+    # change the table prefix and add custom values
+    sed -i "/\$table_prefix = 'wp_';/ {
+		s|^\(\$table_prefix = '\)wp_';|\1${WORDPRESS_TABLE_PREFIX}';|
+		a
+		a // If we're behind a proxy server and using HTTPS, we need to alert Wordpress of that fact
+		a // see also http://codex.wordpress.org/Administration_Over_SSL#Using_a_Reverse_Proxy
+		a if (isset(\$_SERVER['HTTP_X_FORWARDED_PROTO']) && \$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+		a   \$_SERVER['HTTPS'] = 'on';
+		a }
+	}" "${WORDPRESS_DIR}/wp-config.php"
+
+    # add a custom setting to disable WP Cron
+    sed -i '/\/\* Add any custom values between this line and the "stop editing" line. \*\//a define( '\''DISABLE_WP_CRON'\'', true );' "${WORDPRESS_DIR}/wp-config.php"
+fi
+
+# set cronjob
+if [[ ! -f /config/crontabs/root ]]; then
+	cp /defaults/root /config/crontabs/root
+fi
+
+# copy cronjob
+cp /config/crontabs/root /etc/crontabs/root
+
+# check if WordPress installation is completed
+DB_CHECK=$(mysql -h $WORDPRESS_DB_HOST -u $WORDPRESS_DB_USER -p$WORDPRESS_DB_PASSWORD -e "SELECT 1;" 2>&1)
+
+sleep 2
+if [[ "$BYPASS_DB_CHECK" = "yes" ]]; then
+    if grep -q "${WORDPRESS_DB_NAME}" ${WORDPRESS_DIR}/wp-config.php; then
+        echo "$info ==> -- Complete! WordPress has been successfully set up. Make sure the database is correctly configured. --"
+    fi
+else
+    if grep -q "${WORDPRESS_DB_NAME}" ${WORDPRESS_DIR}/wp-config.php && [ -n "$DB_CHECK" ]; then
+        echo "$info ==> -- Complete! WordPress has been successfully set up. --"
+    fi
+fi

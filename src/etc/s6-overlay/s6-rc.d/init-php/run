@@ -1,0 +1,52 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+
+# Load Generic Libraries
+. /defaults/scripts/env.sh
+. /defaults/scripts/liblog.sh
+
+echo "$info ==> -- Starting PHP setup --"
+
+# PHP opcache
+case "$OPCACHE_ENABLE" in
+    off | false)
+        OPCACHE_ENABLE=0
+    ;;
+    on | true)
+        OPCACHE_ENABLE=1
+    ;;
+    *)
+        echo "$warn ==> Error: Invalid value for OPCACHE_ENABLE: $OPCACHE_ENABLE. Please set it to 'true' or 'false'." >&2
+        exit 1
+    ;;
+esac
+
+# copy local php.ini if it doesn't exist
+if [[ ! -f /config/php/php-local.ini ]]; then
+    cp /defaults/php/php-local.ini /config/php/php-local.ini
+fi
+
+# set env value from user input
+echo "$info ==> Setup PHP configuration..."
+sed -i \
+    -e "s|date.timezone = UTC|date.timezone = $TZ|g" \
+    -e "s|memory_limit = .*|memory_limit = $MEMORY_LIMIT|g" \
+    -e "s|max_input_time = .*|max_input_time = $MAX_INPUT_TIME|g" \
+    -e "s|max_input_vars = .*|max_input_vars = $MAX_INPUT_VARS|g" \
+    -e "s|max_file_uploads = .*|max_file_uploads = $MAX_FILE_UPLOADS|g" \
+    -e "s|max_execution_time = .*|max_execution_time = $MAX_EXECUTION_TIME|g" \
+    -e "s|post_max_size = .*|post_max_size = $POST_MAX_SIZE|g" \
+    -e "s|upload_max_filesize = .*|upload_max_filesize = $UPLOAD_MAX_FILESIZE|g" \
+    -e "s|opcache.enable = .*|opcache.enable = ${OPCACHE_ENABLE}|g" \
+    /config/php/php-local.ini
+
+# copy user php-local.ini to image
+cp /config/php/php-local.ini /etc/php"$PHP_VERSION"/conf.d/php-local.ini
+
+# create override for www.conf if it doesn't exist
+if [[ ! -f /config/php/www2.conf ]]; then
+    cp /defaults/php/www2.conf /config/php/www2.conf
+fi
+
+# copy user www2.conf to image
+cp /config/php/www2.conf /etc/php"$PHP_VERSION"/php-fpm.d/www2.conf
